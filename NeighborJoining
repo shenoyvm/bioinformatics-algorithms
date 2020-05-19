@@ -1,0 +1,74 @@
+'''
+INPUT: An integer n, followed by an n x n distance matrix (space-separated).
+OUTPUT: An adjacency list for the tree resulting from applying the neighbor-joining algorithm, with edge weights accurate to three decimal places.
+'''
+
+## pass input .txt file as argument <file>
+def ConvertRawInput(file):
+  with open(file, 'r') as f:
+    contents = f.readlines()
+  
+  ## read integer on first line to <size>
+  size = int(contents.pop(0))
+  
+  ## read remaining lines to new list and generate matrix dictionary <D>
+  contents = [x.rstrip('\n').split() for x in contents]
+  
+  D = {x: {y: int(contents[x][y]) for y in range(len(contents[x]))} for x in range(len(contents))}
+
+  ## delete diagonal elements (all zeroes)
+  for x in range(len(D)):
+    del D[x][x]
+  
+  return D, size
+
+## pass matrix as dict of dicts <D> and its size as int <size>
+def NeighborJoining(D, size):
+  n = len(D)
+  
+  ## terminate recursion when <D> is 2 x 2
+  if n == 2:
+    return {x: {y: D[x][y]} for x in D for y in D[x]}
+  
+  ## create neighbor-joining matrix
+  D_nj = {x: {
+  y: (n - 2) * D[x][y] - sum(D[x].values()) - sum(D[y].values()) for y in D[x]
+  } for x in D}
+
+  ## find minimum value in <D_nj>
+  minDistInRow = [min(D_nj[x].values()) for x in D_nj]
+  minVal = min(minDistInRow)
+  
+  minRow = [x for x in D_nj if minVal in D_nj[x].values()][0]
+  minCol = list(D_nj[minRow].keys())[list(D_nj[minRow].values()).index(minVal)]
+  
+  ## calculate limb lengths of each node
+  delta = (sum(D[minRow].values()) - sum(D[minCol].values())) / (n - 2)
+  limbLen_x = (D[minRow][minCol] + delta) / 2
+  limbLen_y = (D[minRow][minCol] - delta) / 2
+  
+  ## add row for new node
+  new = 2 * size - n #- 3
+  D[new] = {k: (D[k][minRow] + D[k][minCol] - D[minRow][minCol]) / 2 for k in D if k != minRow and k != minCol}
+  
+  ## delete old node rows and columns
+  del D[minRow]
+  del D[minCol]
+
+  for x in (y for y in D if y != new):
+  
+    del D[x][minRow]
+    del D[x][minCol]
+    
+    ## add new node distances to all existing rows
+    D[x][new] = D[new][x]
+  
+  ## recursive function call
+  T = NeighborJoining(D, size)
+  
+  ## update <T> with new edge weights.
+  T[new][minRow], T[new][minCol] = limbLen_x, limbLen_y
+  T[minRow] = {new: limbLen_x}
+  T[minCol] = {new: limbLen_y}
+  
+  return T
